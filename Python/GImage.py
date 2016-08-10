@@ -1,6 +1,7 @@
 import sys
 import os
-import copy
+import yaml
+
 from PySide.QtGui import *
 from PySide.QtCore import *
 from main_window import Ui_MainWindow
@@ -30,6 +31,7 @@ class GCommand():
         def popArg(self):
             self.args.pop()
 
+
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -41,12 +43,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.generated_image = QImage()
         self.saved_grayscale_img = QImage()
 
+        if not os.path.exists('.\config'):
+            os.makedirs('.\config')
+            self.createConfigFile()
+        else:
+            if not os.path.isfile('.\config\config.yaml'):
+                self.createConfigFile()
+
+        # Read the Settings
+        tmp_file = open('.\config\config.yaml', 'r')
+        self.settings = yaml.safe_load(tmp_file)
+        tmp_file.close()
+
         self.original_scene = QGraphicsScene()
         self.gray_scene = QGraphicsScene()
         self.generated_scene = QGraphicsScene()
         self.isNewFile = 0
 
-        #Menu Bar Action
+        # Menu Bar Action
         self.actionOpen.setShortcut('Ctrl+O')
         self.actionOpen.setStatusTip('Open File')
         self.actionOpen.triggered.connect(self.showOpenDialog)
@@ -57,6 +71,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.actionSave_As.setStatusTip('Save File As')
         self.actionSave_As.triggered.connect(self.showSaveDialog)
+
+        self.actionSettings.triggered.connect(self.showSettingsDialog)
 
         # Image Toolbar
         self.brightness_slider.valueChanged.connect(self.changeSliderBrightness)
@@ -78,6 +94,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.image_tabs.currentChanged.connect(self.onChange)
         self.show()
 
+    def createConfigFile(self):
+        print "Creating Config File"
+        self.yaml_config_file = open('.\config\config.yaml', 'w+')
+        settings = {'Machine': {'bed_length': 0, 'bed_width': 0, 'focus_distance': 0, 'laser_on_cmd': '', 'laser_pwr_cmd': '', 'laser_off_cmd': '', 'on_idle_delay': ''}, 'Gcode': {'Materials': {}, 'Current': '', 'start_gcode': '', 'end_gcode':''}, 'Application': {}}
+        yaml.dump(settings, self.yaml_config_file)
+        self.yaml_config_file.close()
+
     def onChange(self, argTabIndex):
         if self.image_tabs.currentIndex() == 1:
             # Generate the Grayscale Image if Needed
@@ -92,6 +115,86 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.gray_image.show()
                 else:
                     self.convertToGrayScale()
+
+    def fillBoxes(self):
+        if self.settings['Gcode']['Materials']:
+            self.settingsUI.minpwr_line.setText(str(self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['low_power']))
+            self.settingsUI.maxpwr_line.setText(str(self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['high_power']))
+            self.settingsUI.feedrate_line.setText(str(self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['feedrate']))
+
+    def delMaterial(self):
+        if self.settings['Gcode']['Materials']:
+            del self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]
+            self.settingsUI.material_combobox.removeItem(self.settingsUI.material_combobox.currentIndex())
+
+    def addMaterial(self):
+        text, ok = QInputDialog.getText(self, 'Material Name',
+                                              'Enter the Material Name')
+        if ok:
+            #Add the Material to the Settings and Combobox
+            self.settings['Gcode']['Materials'][str(text)] = {'low_power': 0, 'high_power': 0, 'feedrate': 0}
+            self.settingsUI.material_combobox.addItem(text)
+
+    def setMinPower(self):
+        self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['low_power'] = str(self.settingsUI.minpwr_line.text())
+        self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['high_power'] = str(self.settingsUI.maxpwr_line.text())
+        self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['feedrate'] = str(self.settingsUI.feedrate_line.text())
+
+    def showSettingsDialog(self):
+        self.settingsDialog = QDialog(self)
+        self.settingsUI = Ui_Form()
+        self.settingsUI.setupUi(self.settingsDialog)
+
+        # Populate the Fields
+        tmp_file = open('.\config\config.yaml', 'r')
+        self.settings = yaml.safe_load(tmp_file)
+        tmp_file.close()
+
+        self.settingsUI.bedlength_line.setText(str(self.settings['Machine']['bed_length']))
+        self.settingsUI.bedwidth_line.setText(str(self.settings['Machine']['bed_width']))
+        self.settingsUI.focus_line.setText(str(self.settings['Machine']['focus_distance']))
+        self.settingsUI.laseron_line.setText(str(self.settings['Machine']['laser_on_cmd']))
+        self.settingsUI.laserpwr_line.setText(str(self.settings['Machine']['laser_pwr_cmd']))
+        self.settingsUI.laseroff_line.setText(str(self.settings['Machine']['laser_off_cmd']))
+
+        self.settingsUI.startgcode_edit.setText(self.settings['Gcode']['start_gcode'])
+        self.settingsUI.endgcode_edit.setText(self.settings['Gcode']['end_gcode'])
+
+        materials = self.settings['Gcode']['Materials']
+        current_material = self.settings['Gcode']['Current']
+
+        self.settingsUI.material_combobox.addItem(current_material)
+        self.settingsUI.minpwr_line.setText(str(self.settings['Gcode']['Materials'][current_material]['low_power']))
+        self.settingsUI.maxpwr_line.setText(str(self.settings['Gcode']['Materials'][current_material]['high_power']))
+        self.settingsUI.feedrate_line.setText(str(self.settings['Gcode']['Materials'][current_material]['feedrate']))
+
+        for key, value in materials.iteritems():
+            print key
+            if key != current_material:
+                self.settingsUI.material_combobox.addItem(key)
+
+        # Connect the Widgets
+        self.settingsUI.accept_button.pressed.connect(self.acceptSettings)
+        self.settingsUI.close_button.pressed.connect(self.settingsDialog.close)
+        self.settingsUI.material_combobox.currentIndexChanged.connect(self.fillBoxes)
+        self.settingsUI.addmaterial_button.pressed.connect(self.addMaterial)
+        self.settingsUI.delmaterial_button.pressed.connect(self.delMaterial)
+        self.settingsUI.minpwr_line.textChanged.connect(self.setMinPower)
+        self.settingsUI.maxpwr_line.textChanged.connect(self.setMinPower)
+        self.settingsUI.feedrate_line.textChanged.connect(self.setMinPower)
+
+        self.settingsDialog.show()
+
+    def acceptSettings(self):
+        # Update the Yaml File
+        self.settings['Gcode']['Current'] = str(self.settingsUI.material_combobox.currentText())
+        print self.settings
+        # Populate the Fields
+        tmp_file = open('.\config\config.yaml', 'w')
+        yaml.dump(self.settings, tmp_file)
+        tmp_file.close()
+
+        self.settingsDialog.close()
 
     def showOpenDialog(self):
         if self.tabWidget.currentIndex() == 0:
@@ -156,10 +259,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 else:
                     tmp_green = 255
 
-                if (color.blue() * self.brightness_spinbox.value() < 256):
+                if (color.blue() * self.brightness_spinbox.value()) < 256:
                     tmp_blue = color.blue() * self.brightness_spinbox.value()
                 else:
                     tmp_blue = 255
+
+                factor = (259 * (self.contrast_spinbox.value() + 255)) / float(255 * (259 - self.contrast_spinbox.value()))
+
+                tmp_red = factor * (tmp_red - 128) + 128
+                tmp_green = factor * (tmp_green - 128) + 128
+                tmp_blue = factor * (tmp_blue - 128) + 128
+
+                if tmp_red > 255:
+                    tmp_red = 255
+                elif tmp_red < 0:
+                    tmp_red = 0
+
+                if tmp_green > 255:
+                    tmp_green = 255
+                elif tmp_green < 0:
+                    tmp_green = 0
+
+                if tmp_blue > 255:
+                    tmp_blue = 255
+                elif tmp_blue < 0:
+                    tmp_blue = 0
 
                 self.grayscale_img.setPixel(i, j, qRgb(tmp_red, tmp_green, tmp_blue))
                 QCoreApplication.processEvents()
@@ -189,6 +313,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 gray = qGray(color)
                 self.grayscale_img.setPixel(i, j, qRgb(gray, gray, gray))
                 QCoreApplication.processEvents()
+
         self.saved_grayscale_img = self.grayscale_img.copy()
 
         pixmap = QPixmap(self.grayscale_img)
@@ -205,14 +330,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.job_label.setText("Generating Gcode")
         self.job_label.repaint()
         # Convert the Image to g-code
-        for i in range(0, self.img.width()):
+        for i in range(0, self.grayscale_img.width()):
             # Update the Progress Bar
             if i > 0:
-                self.job_progressbar.setValue(int((float(i) / self.img.width()) * 100))
-            for j in range(0, self.img.height()):
-                color = QColor(self.img.pixel(i, j))
-                print color.red()
-
+                self.job_progressbar.setValue(int((float(i) / self.grayscale_img.width()) * 100))
+            for j in range(0, self.grayscale_img.height()):
+                color = QColor(self.grayscale_img.pixel(i, j))
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

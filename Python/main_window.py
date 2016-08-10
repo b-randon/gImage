@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main_window.ui'
 #
-# Created: Sat Aug 06 23:15:19 2016
+# Created: Sun Aug 07 18:44:36 2016
 #      by: pyside-uic 0.2.15 running on PySide 1.2.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -69,9 +69,9 @@ class Ui_MainWindow(object):
         self.brightness_slider.setObjectName("brightness_slider")
         self.gridLayout_3.addWidget(self.brightness_slider, 1, 0, 1, 2)
         self.contrast_slider = QtGui.QSlider(self.image_tab)
-        self.contrast_slider.setMinimum(0)
-        self.contrast_slider.setMaximum(20)
-        self.contrast_slider.setProperty("value", 10)
+        self.contrast_slider.setMinimum(-255)
+        self.contrast_slider.setMaximum(255)
+        self.contrast_slider.setProperty("value", 0)
         self.contrast_slider.setOrientation(QtCore.Qt.Horizontal)
         self.contrast_slider.setObjectName("contrast_slider")
         self.gridLayout_3.addWidget(self.contrast_slider, 4, 0, 1, 2)
@@ -82,17 +82,15 @@ class Ui_MainWindow(object):
         self.brightness_spinbox.setProperty("value", 1.0)
         self.brightness_spinbox.setObjectName("brightness_spinbox")
         self.gridLayout_3.addWidget(self.brightness_spinbox, 0, 1, 1, 1)
-        self.contrast_spinbox = QtGui.QDoubleSpinBox(self.image_tab)
-        self.contrast_spinbox.setDecimals(1)
-        self.contrast_spinbox.setMaximum(2.0)
-        self.contrast_spinbox.setSingleStep(0.1)
-        self.contrast_spinbox.setProperty("value", 1.0)
+        self.contrast_spinbox = QtGui.QSpinBox(self.image_tab)
+        self.contrast_spinbox.setMinimum(-255)
+        self.contrast_spinbox.setMaximum(255)
         self.contrast_spinbox.setObjectName("contrast_spinbox")
         self.gridLayout_3.addWidget(self.contrast_spinbox, 2, 1, 1, 1)
+        self.verticalLayout.addLayout(self.gridLayout_3)
         self.submit_button = QtGui.QPushButton(self.image_tab)
         self.submit_button.setObjectName("submit_button")
-        self.gridLayout_3.addWidget(self.submit_button, 3, 0, 1, 1)
-        self.verticalLayout.addLayout(self.gridLayout_3)
+        self.verticalLayout.addWidget(self.submit_button)
         self.gridLayout_5 = QtGui.QGridLayout()
         self.gridLayout_5.setObjectName("gridLayout_5")
         self.size_label = QtGui.QLabel(self.image_tab)
