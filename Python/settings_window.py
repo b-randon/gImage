@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'settings_window.ui'
+# Form implementation generated from reading ui file 'C:\Users\B\Desktop\git\gImage\UI\settings_window.ui'
 #
-# Created: Tue Aug 09 22:32:15 2016
+# Created: Wed Aug 10 21:57:56 2016
 #      by: pyside-uic 0.2.15 running on PySide 1.2.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -12,7 +12,7 @@ from PySide import QtCore, QtGui
 class Ui_Form(object):
     def setupUi(self, Form):
         Form.setObjectName("Form")
-        Form.resize(500, 300)
+        Form.resize(412, 300)
         Form.setMaximumSize(QtCore.QSize(500, 300))
         self.gridLayout = QtGui.QGridLayout(Form)
         self.gridLayout.setObjectName("gridLayout")
@@ -148,6 +148,33 @@ class Ui_Form(object):
         self.tabWidget.addTab(self.tab_2, "")
         self.tab_3 = QtGui.QWidget()
         self.tab_3.setObjectName("tab_3")
+        self.gridLayoutWidget = QtGui.QWidget(self.tab_3)
+        self.gridLayoutWidget.setGeometry(QtCore.QRect(10, 10, 101, 109))
+        self.gridLayoutWidget.setObjectName("gridLayoutWidget")
+        self.gridLayout_3 = QtGui.QGridLayout(self.gridLayoutWidget)
+        self.gridLayout_3.setContentsMargins(0, 0, 0, 0)
+        self.gridLayout_3.setObjectName("gridLayout_3")
+        self.xautosize_line = QtGui.QLineEdit(self.gridLayoutWidget)
+        self.xautosize_line.setObjectName("xautosize_line")
+        self.gridLayout_3.addWidget(self.xautosize_line, 2, 1, 1, 1)
+        self.label_18 = QtGui.QLabel(self.gridLayoutWidget)
+        self.label_18.setObjectName("label_18")
+        self.gridLayout_3.addWidget(self.label_18, 2, 2, 1, 1)
+        self.label_19 = QtGui.QLabel(self.gridLayoutWidget)
+        self.label_19.setObjectName("label_19")
+        self.gridLayout_3.addWidget(self.label_19, 5, 2, 1, 1)
+        self.yautosize_line = QtGui.QLineEdit(self.gridLayoutWidget)
+        self.yautosize_line.setObjectName("yautosize_line")
+        self.gridLayout_3.addWidget(self.yautosize_line, 5, 1, 1, 1)
+        self.label_20 = QtGui.QLabel(self.gridLayoutWidget)
+        self.label_20.setObjectName("label_20")
+        self.gridLayout_3.addWidget(self.label_20, 2, 0, 1, 1)
+        self.label_21 = QtGui.QLabel(self.gridLayoutWidget)
+        self.label_21.setObjectName("label_21")
+        self.gridLayout_3.addWidget(self.label_21, 5, 0, 1, 1)
+        self.autoset_radio = QtGui.QRadioButton(self.gridLayoutWidget)
+        self.autoset_radio.setObjectName("autoset_radio")
+        self.gridLayout_3.addWidget(self.autoset_radio, 0, 0, 1, 3)
         self.tabWidget.addTab(self.tab_3, "")
         self.verticalLayout.addWidget(self.tabWidget)
         self.horizontalLayout_2 = QtGui.QHBoxLayout()
@@ -162,7 +189,7 @@ class Ui_Form(object):
         self.gridLayout.addLayout(self.verticalLayout, 0, 0, 1, 1)
 
         self.retranslateUi(Form)
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(2)
         QtCore.QMetaObject.connectSlotsByName(Form)
 
     def retranslateUi(self, Form):
@@ -188,6 +215,11 @@ class Ui_Form(object):
         self.addmaterial_button.setText(QtGui.QApplication.translate("Form", "+", None, QtGui.QApplication.UnicodeUTF8))
         self.delmaterial_button.setText(QtGui.QApplication.translate("Form", "-", None, QtGui.QApplication.UnicodeUTF8))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QtGui.QApplication.translate("Form", "Gcode", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_18.setText(QtGui.QApplication.translate("Form", "Pixels", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_19.setText(QtGui.QApplication.translate("Form", "Pixels", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_20.setText(QtGui.QApplication.translate("Form", "X", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_21.setText(QtGui.QApplication.translate("Form", "y", None, QtGui.QApplication.UnicodeUTF8))
+        self.autoset_radio.setText(QtGui.QApplication.translate("Form", "Auto Set Size", None, QtGui.QApplication.UnicodeUTF8))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), QtGui.QApplication.translate("Form", "Application", None, QtGui.QApplication.UnicodeUTF8))
         self.accept_button.setText(QtGui.QApplication.translate("Form", "Accept", None, QtGui.QApplication.UnicodeUTF8))
         self.close_button.setText(QtGui.QApplication.translate("Form", "Close", None, QtGui.QApplication.UnicodeUTF8))

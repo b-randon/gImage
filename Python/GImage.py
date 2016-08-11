@@ -97,7 +97,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def createConfigFile(self):
         print "Creating Config File"
         self.yaml_config_file = open('.\config\config.yaml', 'w+')
-        settings = {'Machine': {'bed_length': 0, 'bed_width': 0, 'focus_distance': 0, 'laser_on_cmd': '', 'laser_pwr_cmd': '', 'laser_off_cmd': '', 'on_idle_delay': ''}, 'Gcode': {'Materials': {}, 'Current': '', 'start_gcode': '', 'end_gcode':''}, 'Application': {}}
+        settings = {'Machine': {'bed_length': 0, 'bed_width': 0, 'focus_distance': 0, 'laser_on_cmd': '',
+                                'laser_pwr_cmd': '', 'laser_off_cmd': '', 'on_idle_delay': ''},
+                    'Gcode': {'Materials': {}, 'Current': '', 'start_gcode': '', 'end_gcode':''},
+                    'Application': {'Auto_Size':'', 'xsize':'', 'ysize':''}}
         yaml.dump(settings, self.yaml_config_file)
         self.yaml_config_file.close()
 
@@ -118,9 +121,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def fillBoxes(self):
         if self.settings['Gcode']['Materials']:
-            self.settingsUI.minpwr_line.setText(str(self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['low_power']))
-            self.settingsUI.maxpwr_line.setText(str(self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['high_power']))
-            self.settingsUI.feedrate_line.setText(str(self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['feedrate']))
+
+            #Don't Trigger the Line Edit Signals
+            self.settingsUI.maxpwr_line.blockSignals(1)
+            self.settingsUI.minpwr_line.blockSignals(1)
+            self.settingsUI.feedrate_line.blockSignals(1)
+
+            self.settingsUI.minpwr_line.setText(
+                self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['low_power'])
+            self.settingsUI.maxpwr_line.setText(
+                self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['high_power'])
+            self.settingsUI.feedrate_line.setText(
+                self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['feedrate'])
+
+            #Allow Signals Again
+            self.settingsUI.maxpwr_line.blockSignals(0)
+            self.settingsUI.minpwr_line.blockSignals(0)
+            self.settingsUI.feedrate_line.blockSignals(0)
+
 
     def delMaterial(self):
         if self.settings['Gcode']['Materials']:
@@ -132,13 +150,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                               'Enter the Material Name')
         if ok:
             #Add the Material to the Settings and Combobox
-            self.settings['Gcode']['Materials'][str(text)] = {'low_power': 0, 'high_power': 0, 'feedrate': 0}
+            self.settings['Gcode']['Materials'][str(text)] = dict(low_power='0', high_power='0', feedrate='0')
+            print self.settings
             self.settingsUI.material_combobox.addItem(text)
 
     def setMinPower(self):
-        self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['low_power'] = str(self.settingsUI.minpwr_line.text())
-        self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['high_power'] = str(self.settingsUI.maxpwr_line.text())
-        self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['feedrate'] = str(self.settingsUI.feedrate_line.text())
+        self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['low_power'] =\
+            str(self.settingsUI.minpwr_line.text())
+        self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['high_power'] =\
+            str(self.settingsUI.maxpwr_line.text())
+        self.settings['Gcode']['Materials'][self.settingsUI.material_combobox.currentText()]['feedrate'] =\
+            str(self.settingsUI.feedrate_line.text())
 
     def showSettingsDialog(self):
         self.settingsDialog = QDialog(self)
@@ -156,17 +178,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.settingsUI.laseron_line.setText(str(self.settings['Machine']['laser_on_cmd']))
         self.settingsUI.laserpwr_line.setText(str(self.settings['Machine']['laser_pwr_cmd']))
         self.settingsUI.laseroff_line.setText(str(self.settings['Machine']['laser_off_cmd']))
+        self.settingsUI.idle_line.setText(str(self.settings['Machine']['on_idle_delay']))
 
         self.settingsUI.startgcode_edit.setText(self.settings['Gcode']['start_gcode'])
         self.settingsUI.endgcode_edit.setText(self.settings['Gcode']['end_gcode'])
 
+        if self.settings['Application']['Auto_Size'] == 'True':
+            self.settingsUI.autoset_radio.setChecked(1)
+            self.settingsUI.xautosize_line.setText(str(self.settings['Application']['xsize']))
+            self.settingsUI.yautosize_line.setText(str(self.settings['Application']['ysize']))
+
         materials = self.settings['Gcode']['Materials']
         current_material = self.settings['Gcode']['Current']
 
-        self.settingsUI.material_combobox.addItem(current_material)
-        self.settingsUI.minpwr_line.setText(str(self.settings['Gcode']['Materials'][current_material]['low_power']))
-        self.settingsUI.maxpwr_line.setText(str(self.settings['Gcode']['Materials'][current_material]['high_power']))
-        self.settingsUI.feedrate_line.setText(str(self.settings['Gcode']['Materials'][current_material]['feedrate']))
+        if self.settings['Gcode']['Materials']:
+            self.settingsUI.material_combobox.addItem(current_material)
+            self.settingsUI.minpwr_line.setText(str(self.settings['Gcode']['Materials'][current_material]['low_power']))
+            self.settingsUI.maxpwr_line.setText(str(self.settings['Gcode']['Materials'][current_material]['high_power']))
+            self.settingsUI.feedrate_line.setText(str(self.settings['Gcode']['Materials'][current_material]['feedrate']))
 
         for key, value in materials.iteritems():
             print key
@@ -188,7 +217,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def acceptSettings(self):
         # Update the Yaml File
         self.settings['Gcode']['Current'] = str(self.settingsUI.material_combobox.currentText())
-        print self.settings
+        self.settings['Gcode']['start_gcode'] = str(self.settingsUI.startgcode_edit.toPlainText())
+        self.settings['Gcode']['end_gcode'] = str(self.settingsUI.endgcode_edit.toPlainText())
+
+        self.settings['Machine']['bed_length'] = str(self.settingsUI.bedlength_line.text())
+        self.settings['Machine']['bed_width'] = str(self.settingsUI.bedwidth_line.text())
+        self.settings['Machine']['focus_distance'] = str(self.settingsUI.focus_line.text())
+        self.settings['Machine']['laser_off_cmd'] = str(self.settingsUI.laseroff_line.text())
+        self.settings['Machine']['laser_on_cmd'] = str(self.settingsUI.laseron_line.text())
+        self.settings['Machine']['laser_pwr_cmd'] = str(self.settingsUI.laserpwr_line.text())
+        self.settings['Machine']['on_idle_delay'] = str(self.settingsUI.idle_line.text())
+
+        self.settings['Application']['Auto_Size'] = str(self.settingsUI.autoset_radio.isChecked())
+        self.settings['Application']['xsize'] = str(self.settingsUI.xautosize_line.text())
+        self.settings['Application']['ysize'] = str(self.settingsUI.yautosize_line.text())
+
         # Populate the Fields
         tmp_file = open('.\config\config.yaml', 'w')
         yaml.dump(self.settings, tmp_file)
@@ -204,24 +247,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             file_name,_ = QFileDialog.getOpenFileName(self, 'Open file',
 
                                           '/', "GCode Files (*.gcode *.gco *.txt);;Image files (*.jpg *.jpeg *.gif *.bmp)")
-        file_ext = os.path.splitext(file_name)[1]
-        if file_ext in (".jpg", ".gif", ".bmp"):
-            # Open the Image File
-            self.original_img.load(file_name)
-            self.isNewFile = 1
+        print file_name
+        if file_name:
+            file_ext = os.path.splitext(file_name)[1]
+            if file_ext in (".jpg", ".gif", ".bmp"):
+                # Open the Image File
+                self.original_img.load(file_name)
+                self.isNewFile = 1
 
-            # Create the Scene and Add it to the View
-            img_pix = QPixmap(self.original_img)
-            self.original_scene.addPixmap(img_pix)
-            self.ysize_spinbox.setValue(self.original_img.height())
-            self.xsize_spinbox.setValue(self.original_img.width())
-            self.original_image.setScene(self.original_scene)
-            self.original_image.show()
-            self.image_tabs.setCurrentIndex(0)
-        else:
-            text = open(file_name).read()
-            self.plainTextEdit.setPlainText(text)
-            self.plainTextEdit.setLineWrapMode(QPlainTextEdit.NoWrap)
+                # Create the Scene and Add it to the View
+                img_pix = QPixmap(self.original_img)
+                self.original_scene.clear()
+                self.original_scene.addPixmap(img_pix)
+                self.ysize_spinbox.setValue(self.original_img.height())
+                self.xsize_spinbox.setValue(self.original_img.width())
+                self.original_image.setScene(self.original_scene)
+                self.original_image.show()
+                self.image_tabs.setCurrentIndex(0)
+            else:
+                text = open(file_name).read()
+                self.plainTextEdit.setPlainText(text)
+                self.plainTextEdit.setLineWrapMode(QPlainTextEdit.NoWrap)
 
     def showSaveDialog(self):
         print "Save File"
