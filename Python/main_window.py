@@ -1,13 +1,23 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'main_window.ui'
+# Form implementation generated from reading ui file 'C:\Users\B\Desktop\git\gImage\UI\main_window.ui'
 #
-# Created: Sun Aug 07 18:44:36 2016
+# Created: Thu Aug 11 23:12:15 2016
 #      by: pyside-uic 0.2.15 running on PySide 1.2.4
 #
 # WARNING! All changes made in this file will be lost!
 
 from PySide import QtCore, QtGui
+
+class MyGraphicsView(QtGui.QGraphicsView):
+    def __init__(self):
+        QtGui.QGraphicsView.__init__(self)
+        self.setRenderHints(QtGui.QPainter.Antialiasing|QtGui.QPainter.SmoothPixmapTransform)
+        self.setTransformationAnchor(QtGui.QGraphicsView.AnchorUnderMouse)
+        self.setDragMode(QtGui.QGraphicsView.ScrollHandDrag)
+    def wheelEvent(self,event):
+        adj = (event.delta()/120) * 0.1
+        self.scale(1+adj,1+adj)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -29,7 +39,7 @@ class Ui_MainWindow(object):
         self.original_tab.setObjectName("original_tab")
         self.horizontalLayout_4 = QtGui.QHBoxLayout(self.original_tab)
         self.horizontalLayout_4.setObjectName("horizontalLayout_4")
-        self.original_image = QtGui.QGraphicsView(self.original_tab)
+        self.original_image = MyGraphicsView()
         self.original_image.setObjectName("original_image")
         self.horizontalLayout_4.addWidget(self.original_image)
         self.image_tabs.addTab(self.original_tab, "")
@@ -37,7 +47,7 @@ class Ui_MainWindow(object):
         self.gray_tab.setObjectName("gray_tab")
         self.horizontalLayout_11 = QtGui.QHBoxLayout(self.gray_tab)
         self.horizontalLayout_11.setObjectName("horizontalLayout_11")
-        self.gray_image = QtGui.QGraphicsView(self.gray_tab)
+        self.gray_image = MyGraphicsView()
         self.gray_image.setObjectName("gray_image")
         self.horizontalLayout_11.addWidget(self.gray_image)
         self.image_tabs.addTab(self.gray_tab, "")
@@ -45,9 +55,9 @@ class Ui_MainWindow(object):
         self.generated_tab.setObjectName("generated_tab")
         self.horizontalLayout_10 = QtGui.QHBoxLayout(self.generated_tab)
         self.horizontalLayout_10.setObjectName("horizontalLayout_10")
-        self.currentImage_3 = QtGui.QGraphicsView(self.generated_tab)
-        self.currentImage_3.setObjectName("currentImage_3")
-        self.horizontalLayout_10.addWidget(self.currentImage_3)
+        self.generated_image = MyGraphicsView()
+        self.generated_image.setObjectName("generated_image")
+        self.horizontalLayout_10.addWidget(self.generated_image)
         self.image_tabs.addTab(self.generated_tab, "")
         self.horizontalLayout_6.addWidget(self.image_tabs)
         self.verticalLayout = QtGui.QVBoxLayout()
@@ -301,7 +311,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
         self.tabWidget.setCurrentIndex(0)
-        self.image_tabs.setCurrentIndex(0)
+        self.image_tabs.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):

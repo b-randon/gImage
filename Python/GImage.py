@@ -32,6 +32,9 @@ class GCommand():
             self.args.pop()
 
 
+
+
+
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -40,7 +43,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Class Variables
         self.original_img = QImage()
         self.grayscale_img = QImage()
-        self.generated_image = QImage()
+        self.generated_img = QImage()
         self.saved_grayscale_img = QImage()
 
         if not os.path.exists('.\config'):
