@@ -264,14 +264,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 # Create the Scene and Add it to the View
                 img_pix = QPixmap(self.original_img)
                 self.original_scene.clear()
+
                 self.original_scene.addPixmap(img_pix)
+                self.original_scene.setSceneRect(0, 0, self.original_img.width(), self.original_img.height())
                 self.ysize_spinbox.setValue(self.original_img.height())
                 self.xsize_spinbox.setValue(self.original_img.width())
-                print self.original_img.width()
-                print self.original_img.height()
-                print self.ysize_spinbox.text()
-                print self.xsize_spinbox.text()
                 self.original_image.setScene(self.original_scene)
+
                 self.original_image.fitInView(self.original_scene.sceneRect(), Qt.KeepAspectRatio)
                 self.original_image.show()
                 self.image_tabs.setCurrentIndex(0)
@@ -376,7 +375,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         pixmap = QPixmap(self.grayscale_img)
         temp_scene = QGraphicsScene()
         temp_scene.addPixmap(pixmap)
+        temp_scene.setSceneRect(0, 0, self.grayscale_img.width(), self.grayscale_img.height())
         self.gray_image.setScene(temp_scene)
+        self.gray_image.fitInView(temp_scene.sceneRect(), Qt.KeepAspectRatio)
         self.gray_image.show()
 
         self.job_label.setText("Finished")
