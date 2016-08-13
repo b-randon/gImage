@@ -118,6 +118,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     tmp_pixmap = QPixmap(self.grayscale_img)
                     self.scene.addPixmap(tmp_pixmap)
                     self.gray_image.setScene(self.scene)
+                    self.gray_image.fitInView(self.gray_scene.sceneRect())
                     self.gray_image.show()
                 else:
                     self.convertToGrayScale()
@@ -256,6 +257,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if file_ext in (".jpg", ".gif", ".bmp"):
                 # Open the Image File
                 self.original_img.load(file_name)
+                print self.original_img.width()
+                print self.original_img.height()
                 self.isNewFile = 1
 
                 # Create the Scene and Add it to the View
@@ -264,7 +267,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.original_scene.addPixmap(img_pix)
                 self.ysize_spinbox.setValue(self.original_img.height())
                 self.xsize_spinbox.setValue(self.original_img.width())
+                print self.original_img.width()
+                print self.original_img.height()
+                print self.ysize_spinbox.text()
+                print self.xsize_spinbox.text()
                 self.original_image.setScene(self.original_scene)
+                self.original_image.fitInView(self.original_scene.sceneRect(), Qt.KeepAspectRatio)
                 self.original_image.show()
                 self.image_tabs.setCurrentIndex(0)
             else:
