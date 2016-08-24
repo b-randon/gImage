@@ -46,6 +46,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.generated_img = QImage()
         self.saved_grayscale_img = QImage()
 
+        self.settingsDialog = QDialog(self)
+        self.settingsUI = Ui_Form()
+        self.settingsUI.setupUi(self.settingsDialog)
+
         if not os.path.exists('.\config'):
             os.makedirs('.\config')
             self.createConfigFile()
@@ -62,6 +66,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.gray_scene = QGraphicsScene()
         self.generated_scene = QGraphicsScene()
         self.isNewFile = 0
+
+        materials = self.settings['Gcode']['Materials']
+        current_material = self.settings['Gcode']['Current']
+
+        if self.settings['Gcode']['Materials']:
+            self.material_combobox.addItem(current_material)
+            self.lineEdit_2.setText(str(self.settings['Gcode']['Materials'][current_material]['low_power']))
+            self.lineEdit_3.setText(
+                str(self.settings['Gcode']['Materials'][current_material]['high_power']))
+            self.lineEdit.setText(
+                str(self.settings['Gcode']['Materials'][current_material]['feedrate']))
+
+        for key, value in materials.iteritems():
+            print key
+            if key != current_material:
+                self.material_combobox.addItem(key)
 
         # Menu Bar Action
         self.actionOpen.setShortcut('Ctrl+O')
@@ -167,10 +187,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             str(self.settingsUI.feedrate_line.text())
 
     def showSettingsDialog(self):
-        self.settingsDialog = QDialog(self)
-        self.settingsUI = Ui_Form()
-        self.settingsUI.setupUi(self.settingsDialog)
-
         # Populate the Fields
         tmp_file = open('.\config\config.yaml', 'r')
         self.settings = yaml.safe_load(tmp_file)
@@ -236,6 +252,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.settings['Application']['xsize'] = str(self.settingsUI.xautosize_line.text())
         self.settings['Application']['ysize'] = str(self.settingsUI.yautosize_line.text())
 
+        self.material_combobox.clear()
+
+        items = [self.settingsUI.material_combobox.itemText(i) for i in range(self.settingsUI.material_combobox.count())]
+        self.material_combobox.addItems(items)
+
         # Populate the Fields
         tmp_file = open('.\config\config.yaml', 'w')
         yaml.dump(self.settings, tmp_file)
@@ -257,8 +278,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if file_ext in (".jpg", ".gif", ".bmp"):
                 # Open the Image File
                 self.original_img.load(file_name)
-                print self.original_img.width()
-                print self.original_img.height()
+
+                if self.settings['Application']['Auto_Size'] == 'True':
+                    self.original_img = self.original_img.scaled(int(self.settings['Application']['xsize']), int(self.settings['Application']['ysize']), Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+
                 self.isNewFile = 1
 
                 # Create the Scene and Add it to the View
@@ -384,16 +407,91 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.job_progressbar.setValue(100)
 
     def generateGcode(self):
+
+        if not self.resolution_edit.text():
+            return
+
+        resolution = float(self.resolution_edit.text())
+
+        if not self.original_img:
+            print "No Image"
+            return
+
+        if not self.material_combobox.currentText():
+            return
+
+
+
+        if not self.grayscale_img:
+            self.convertToGrayScale()
+            self.isNewFile = False
+
+        gcode = ''
+
         # Change the Job Status
         self.job_label.setText("Generating Gcode")
         self.job_label.repaint()
-        # Convert the Image to g-code
-        for i in range(0, self.grayscale_img.width()):
+
+        #g-code Header
+        gcode += self.settings['Gcode']['start_gcode'] + "\n\n"
+
+       #Feedrate
+        if not self.settings['Gcode']['Current']:
+            print "No Material Selected"
+            return
+
+        gcode += self.settings['Machine']['laser_on_cmd'] + "\n"
+        gcode += "G1 " + self.settings['Gcode']['Materials'][self.material_combobox.currentText()]['feedrate'] + "\n"
+
+        old_color = -1
+        yCoord = 0
+        xCoord = 0
+
+        current_material = self.settings['Gcode']['Current']
+
+
+        min_pwr = int(self.settings['Gcode']['Materials'][current_material]['low_power'])
+        max_pwr = int(self.settings['Gcode']['Materials'][current_material]['high_power'])
+
+        #Loop Through All of the Pixels
+        for i in range(0, self.original_img.height()):
+            #Write to the Temp File to Save Memory
+            yCoord += resolution
+            gcode += "G1 Y" + str(yCoord) + "\n"
+
             # Update the Progress Bar
             if i > 0:
-                self.job_progressbar.setValue(int((float(i) / self.grayscale_img.width()) * 100))
-            for j in range(0, self.grayscale_img.height()):
-                color = QColor(self.grayscale_img.pixel(i, j))
+                self.job_progressbar.setValue(int((float(i) / self.original_img.width()) * 100))
+
+            xCoord = 0
+
+            for j in range(0, self.grayscale_img.width()):
+                xCoord += resolution
+                gcode += "G1 X" + str(xCoord) + "\n"
+                color = QColor(self.grayscale_img.pixel(j, i))
+
+                red = 255 - color.red()
+                if red < min_pwr:
+                    red = min_pwr
+                if red > max_pwr:
+                    red = max_pwr
+
+                if old_color != red:
+                    old_color = red
+                    gcode +=  self.settings['Machine']['laser_pwr_cmd'] + str(red) + "\n"
+
+        gcode += self.settings['Machine']['laser_off_cmd'] + "\n"
+
+        #g-code Footer
+        gcode += self.settings['Gcode']['end_gcode']
+
+        print len(gcode)
+
+        self.job_label.setText("Finished")
+        self.job_progressbar.setValue(100)
+
+        self.plainTextEdit.appendPlainText(gcode)
+        self.tabWidget.setCurrentIndex(1)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
