@@ -45,7 +45,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.grayscale_img = QImage()
         self.generated_img = QImage()
         self.saved_grayscale_img = QImage()
-
+        self.scene = QGraphicsScene()
         self.settingsDialog = QDialog(self)
         self.settingsUI = Ui_Form()
         self.settingsUI.setupUi(self.settingsDialog)
@@ -142,6 +142,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.gray_image.show()
                 else:
                     self.convertToGrayScale()
+
+        if self.image_tabs.currentIndex() == 2:
+            self.generatePrinterImage()
 
     def fillBoxes(self):
         if self.settings['Gcode']['Materials']:
@@ -402,6 +405,59 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.gray_image.setScene(temp_scene)
         self.gray_image.fitInView(temp_scene.sceneRect(), Qt.KeepAspectRatio)
         self.gray_image.show()
+
+        self.job_label.setText("Finished")
+        self.job_progressbar.setValue(100)
+
+    def generatePrinterImage(self):
+
+        self.generated_img = QImage(int(self.settings['Machine']['bed_width']) + 2, int(self.settings['Machine']['bed_width']) + 2, QImage.Format_RGB888)
+
+        # Change the Job Status
+        self.job_label.setText("Generating Printer Image")
+        self.job_label.repaint()
+
+        for i in range(0, self.generated_img.width()):
+            for j in range(0, self.generated_img.height()):
+                self.generated_img.setPixel(i, j, qRgb(255, 255, 255))
+
+        for i in range(0, int(self.settings['Machine']['bed_width']) + 1):
+            self.generated_img.setPixel(i, 0, qRgb(0, 0, 0))
+
+        for i in reversed(range(0, int(self.settings['Machine']['bed_width']) + 1)):
+            self.generated_img.setPixel(i, int(self.settings['Machine']['bed_length']) + 1, qRgb(0, 0, 0))
+
+        for i in range(0, int(self.settings['Machine']['bed_length']) + 1):
+            self.generated_img.setPixel(0, i, qRgb(0, 0, 0))
+
+        for i in reversed(range(0, int(self.settings['Machine']['bed_length']) + 1)):
+            self.generated_img.setPixel(int(self.settings['Machine']['bed_width']) + 1, i, qRgb(0, 0, 0))
+
+        gcode = self.plainTextEdit.toPlainText()
+        gcode_lines = gcode.split("\n")
+
+        x = 0
+        y = 0
+        power = -1
+        for i in gcode_lines:
+            if "G1 X" in i:
+                x = float(i[4:])
+            elif "G1 Y" in i:
+                y = float(i[4:])
+            elif self.settings['Machine']['laser_pwr_cmd'] in i:
+                power = 255 - int(i[len(self.settings['Machine']['laser_pwr_cmd']):])
+
+            if(power > 0):
+                self.generated_img.setPixel(x + 1, y + 1, qRgb(power, power, power))
+
+
+        pixmap = QPixmap(self.generated_img)
+        temp_scene = QGraphicsScene()
+        temp_scene.addPixmap(pixmap)
+        temp_scene.setSceneRect(0, 0, self.generated_img.width(), self.generated_img.height())
+        self.generated_image.setScene(temp_scene)
+        self.generated_image.fitInView(temp_scene.sceneRect(), Qt.KeepAspectRatio)
+        self.generated_image.show()
 
         self.job_label.setText("Finished")
         self.job_progressbar.setValue(100)
