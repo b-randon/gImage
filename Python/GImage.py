@@ -1,39 +1,12 @@
 import sys
 import os
 import yaml
+import serial
 
 from PySide.QtGui import *
 from PySide.QtCore import *
 from main_window import Ui_MainWindow
 from settings_window import Ui_Form
-
-class GCommand():
-    def __init__(self, attr1 = None, attr2 = None, attr3 = None):
-        if attr1 is None:
-            self.command = ""
-        else:
-            self.command = attr1
-
-        if attr2 is None:
-            self.numArgs = 0
-        else:
-            self.numArgs = attr2
-
-        if attr3 is None:
-            self.args = []
-        else:
-            self.args = attr3
-
-        def pushArg(self, arg):
-            self.args.append(arg)
-            self.numArgs += 1
-
-        def popArg(self):
-            self.args.pop()
-
-
-
-
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
@@ -72,10 +45,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         if self.settings['Gcode']['Materials']:
             self.material_combobox.addItem(current_material)
-            self.lineEdit_2.setText(str(self.settings['Gcode']['Materials'][current_material]['low_power']))
-            self.lineEdit_3.setText(
+            self.over_min_pwr_edit.setText(str(self.settings['Gcode']['Materials'][current_material]['low_power']))
+            self.over_max_pwr_edit.setText(
                 str(self.settings['Gcode']['Materials'][current_material]['high_power']))
-            self.lineEdit.setText(
+            self.over_feedrate_edit.setText(
                 str(self.settings['Gcode']['Materials'][current_material]['feedrate']))
 
         for key, value in materials.iteritems():
@@ -112,10 +85,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # GCode Toolbar
         self.gcode_button.pressed.connect(self.generateGcode)
+        self.connect_button.pressed.connect(self.connectPrinter)
 
         # Tab Functions
-        self.image_tabs.currentChanged.connect(self.onChange)
+        self.image_tabs.currentChanged.connect(self.onImageTabChange)
+        self.tabWidget.currentChanged.connect(self.onMainTabChange)
         self.show()
+
+    def connectPrinter(self):
+        port = self.usb_combo.currentText()
+
+        if not port:
+            print "No Port Selected"
+            self.gcode_job_label.setText("No Port Selected")
+        else:
+            print port
 
     def createConfigFile(self):
         print "Creating Config File"
@@ -127,7 +111,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         yaml.dump(settings, self.yaml_config_file)
         self.yaml_config_file.close()
 
-    def onChange(self, argTabIndex):
+    def onMainTabChange(self, argTabIndex):
+        self.usb_combo.clear()
+        if self.tabWidget.currentIndex() == 1:
+            # Update the COM Ports List
+            if sys.platform.startswith('win'):
+                ports = ['COM%s' % (i + 1) for i in range(1)]
+            elif sys.platform.startswith('linux'):
+                ports = glob.glob('/dev/tty[A-Za-z]*')
+            else:
+                print sys.platform + " Not Currently Supports"
+                return
+
+            port_list = []
+            for port in ports:
+                try:
+                    s = serial.Serial(port)
+                    s.close()
+                    port_list.append(port)
+                except (OSError, serial.SerialException):
+                    pass
+
+            self.usb_combo.addItems(port_list)
+
+    def onImageTabChange(self, argTabIndex):
         if self.image_tabs.currentIndex() == 1:
             # Generate the Grayscale Image if Needed
             if self.isNewFile:

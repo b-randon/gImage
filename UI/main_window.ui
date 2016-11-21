@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>941</width>
-    <height>645</height>
+    <height>771</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,7 +18,7 @@
     <item row="1" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="image_tab">
        <attribute name="title">
@@ -372,60 +372,93 @@
        <attribute name="title">
         <string>Gcode</string>
        </attribute>
-       <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="10,1">
+       <layout class="QHBoxLayout" name="horizontalLayout" stretch="10,1">
         <item>
-         <widget class="QPlainTextEdit" name="plainTextEdit"/>
+         <widget class="QTabWidget" name="gcode_tabs">
+          <property name="currentIndex">
+           <number>0</number>
+          </property>
+          <widget class="QWidget" name="text_tab">
+           <attribute name="title">
+            <string>Gcode</string>
+           </attribute>
+           <layout class="QGridLayout" name="gridLayout_7">
+            <item row="0" column="0">
+             <widget class="QPlainTextEdit" name="plainTextEdit"/>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="job_gen_img_tab">
+           <attribute name="title">
+            <string>Image</string>
+           </attribute>
+           <layout class="QGridLayout" name="gridLayout_9">
+            <item row="0" column="0">
+             <widget class="QGraphicsView" name="generated_image_2"/>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="comm_tab">
+           <attribute name="title">
+            <string>Comm</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_4">
+            <item>
+             <widget class="QLabel" name="label_3">
+              <property name="text">
+               <string>Transmit</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QTextEdit" name="tansmit_text_edit"/>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_2">
+              <property name="text">
+               <string>Receive</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QTextEdit" name="receive_text_edit"/>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="stats_tab">
+           <attribute name="title">
+            <string>Stats</string>
+           </attribute>
+          </widget>
+         </widget>
         </item>
         <item>
          <layout class="QVBoxLayout" name="verticalLayout_2">
           <item>
-           <widget class="QLabel" name="material_label">
-            <property name="text">
-             <string>Material</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="material_combobox"/>
-          </item>
-          <item>
-           <layout class="QGridLayout" name="gridLayout_4">
-            <item row="1" column="0">
-             <widget class="QLabel" name="feedrate_label">
-              <property name="text">
-               <string>Feedrate</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QLineEdit" name="lineEdit_2"/>
-            </item>
-            <item row="3" column="1">
-             <widget class="QLineEdit" name="lineEdit_3"/>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="max_pwr_label">
-              <property name="text">
-               <string>Max Power</string>
-              </property>
-             </widget>
-            </item>
+           <layout class="QGridLayout" name="gridLayout_8">
             <item row="2" column="0">
-             <widget class="QLabel" name="min_pwr_label">
-              <property name="text">
-               <string>Min Power</string>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="0" colspan="2">
              <widget class="QCheckBox" name="override_checkbox">
               <property name="text">
                <string>Override</string>
               </property>
              </widget>
             </item>
-            <item row="1" column="1">
-             <widget class="QLineEdit" name="lineEdit"/>
+            <item row="1" column="0">
+             <widget class="QComboBox" name="material_combobox"/>
+            </item>
+            <item row="0" column="0">
+             <widget class="QLabel" name="material_label">
+              <property name="text">
+               <string>Material Settings</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QGridLayout" name="gridLayout_4">
+            <item row="3" column="1">
+             <widget class="QLineEdit" name="over_max_pwr_edit"/>
             </item>
             <item row="1" column="2">
              <widget class="QLabel" name="label_17">
@@ -434,22 +467,141 @@
               </property>
              </widget>
             </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="max_pwr_label">
+              <property name="text">
+               <string>Max Power</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="feedrate_label">
+              <property name="text">
+               <string>Feedrate</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QLineEdit" name="over_feedrate_edit"/>
+            </item>
+            <item row="2" column="1">
+             <widget class="QLineEdit" name="over_min_pwr_edit"/>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="min_pwr_label">
+              <property name="text">
+               <string>Min Power</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0" colspan="3">
+             <widget class="QCheckBox" name="eng_outline_checkbox">
+              <property name="text">
+               <string>Engrave Outline</string>
+              </property>
+             </widget>
+            </item>
            </layout>
           </item>
           <item>
-           <widget class="QLabel" name="eng_pattern_label">
+           <widget class="QPushButton" name="pushButton">
             <property name="text">
-             <string>Engraving Pattern</string>
+             <string>Generate G-Code</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="eng_pattern_combobox"/>
+           <spacer name="horizontalSpacer_4">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
           </item>
           <item>
-           <widget class="QCheckBox" name="eng_outline_checkbox">
+           <layout class="QGridLayout" name="gridLayout_6">
+            <item row="2" column="0" colspan="3">
+             <widget class="QPushButton" name="connect_button">
+              <property name="text">
+               <string>Connect</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QPushButton" name="job_start_button">
+              <property name="text">
+               <string>Start</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0" colspan="3">
+             <widget class="QComboBox" name="usb_combo"/>
+            </item>
+            <item row="0" column="0" colspan="3">
+             <widget class="QLabel" name="label">
+              <property name="text">
+               <string>USB Port</string>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="1" colspan="2">
+             <widget class="QPushButton" name="job_stop_button">
+              <property name="text">
+               <string>Stop</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="2">
+             <widget class="QPushButton" name="job_pause_button">
+              <property name="text">
+               <string>Pause</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1" colspan="2">
+             <spacer name="horizontalSpacer_5">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QLabel" name="gcode_job_label">
             <property name="text">
-             <string>Engrave Outline</string>
+             <string>No Job</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QProgressBar" name="progressBar">
+            <property name="value">
+             <number>0</number>
             </property>
            </widget>
           </item>
@@ -468,7 +620,7 @@
      <x>0</x>
      <y>0</y>
      <width>941</width>
-     <height>21</height>
+     <height>31</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
