@@ -2,11 +2,64 @@ import sys
 import os
 import yaml
 import serial
+import time
 
 from PySide.QtGui import *
 from PySide.QtCore import *
 from main_window import Ui_MainWindow
 from settings_window import Ui_Form
+
+baud_rates = [
+    "9600",
+    "38400",
+    "115200",
+    "230400",
+    "250000",
+    "256000"
+]
+
+class PrinterControl(QThread):
+    rxSignal = Signal(str)
+    txSignal = Signal(str)
+
+    def __init__(self, args=None):
+        QThread.__init__(self)
+        self.running = True
+
+        if args is not None:
+            self.commands = args[0]
+            self.port = args[1]
+
+    def isRunning(self):
+        return self.running
+
+    def stop(self):
+        self.running = False
+
+    def run(self, *args, **kwargs):
+        if self.port is None:
+            print "Not Connect to Printer"
+
+        while(1):
+            if self.processGcode:
+                # Try to Send the Next Command
+                for i in self.commands:
+                    if not self.running:
+                        return
+                    if (len(i) > 0) and (i != "\n"):
+                        print i
+                        self.rxSignal.emit(i)
+                        self.port.write(str(i))
+
+                        # Poll for the Response
+                        response = self.port.readline()
+                        self.txSignal.emit(response)
+
+            else:
+                # Send Any Pending Commands
+                if self.
+
+
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
@@ -22,6 +75,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.settingsDialog = QDialog(self)
         self.settingsUI = Ui_Form()
         self.settingsUI.setupUi(self.settingsDialog)
+        self.serial_port = None
+        self.printerThread = None
 
         if not os.path.exists('.\config'):
             os.makedirs('.\config')
@@ -90,7 +145,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Tab Functions
         self.image_tabs.currentChanged.connect(self.onImageTabChange)
         self.tabWidget.currentChanged.connect(self.onMainTabChange)
+
         self.show()
+
+    def RxHandler(self, message):
+        self.comm_text_edit.insertPlainText("[TX]:" + message + "\n")
+
+    def TxHandler(self, message):
+        self.comm_text_edit.insertPlainText("RX]:" + message + "\n")
 
     def connectPrinter(self):
         port = self.usb_combo.currentText()
@@ -99,15 +161,41 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             print "No Port Selected"
             self.gcode_job_label.setText("No Port Selected")
         else:
-            print port
+            if str(self.connect_button.text()) == "Disconnect":
+                if self.serial_port is not None:
+                    self.serial_port.close()
+                self.connect_button.setText("Connected")
+                return
+            else:
+                try:
+                    self.serial_port = serial.Serial(
+                        port=str(self.usb_combo.currentText()),
+                        baudrate=self.settings['Machine']['baud_rate'])
+                except serial.SerialException:
+                    self.gcode_job_label.setText("Could Not Connect")
+                    return
+
+            self.gcode_job_label.setText("Connected")
+            self.connect_button.setText("Disconnect")
+
+            # Grab the Current G-Code Commands
+            gcode = self.plainTextEdit.toPlainText()
+            gcode = gcode.split("\n")
+            self.printerThread = PrinterControl((gcode, self.serial_port))
+            # Connect Thread Signals
+            self.printerThread.rxSignal.connect(self.RxHandler)
+            self.printerThread.txSignal.connect(self.TxHandler)
+
+            self.printerThread.start()
 
     def createConfigFile(self):
         print "Creating Config File"
         self.yaml_config_file = open('.\config\config.yaml', 'w+')
         settings = {'Machine': {'bed_length': 0, 'bed_width': 0, 'focus_distance': 0, 'laser_on_cmd': '',
-                                'laser_pwr_cmd': '', 'laser_off_cmd': '', 'on_idle_delay': ''},
+                                'laser_pwr_cmd': '', 'laser_off_cmd': '', 'on_idle_delay': '', 'baud_rate': 9600},
                     'Gcode': {'Materials': {}, 'Current': '', 'start_gcode': '', 'end_gcode':''},
                     'Application': {'Auto_Size':'', 'xsize':'', 'ysize':''}}
+
         yaml.dump(settings, self.yaml_config_file)
         self.yaml_config_file.close()
 
@@ -116,7 +204,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.tabWidget.currentIndex() == 1:
             # Update the COM Ports List
             if sys.platform.startswith('win'):
-                ports = ['COM%s' % (i + 1) for i in range(1)]
+                ports = ['COM%s' % (i + 1) for i in range(256)]
             elif sys.platform.startswith('linux'):
                 ports = glob.glob('/dev/tty[A-Za-z]*')
             else:
@@ -213,6 +301,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.settingsUI.startgcode_edit.setText(self.settings['Gcode']['start_gcode'])
         self.settingsUI.endgcode_edit.setText(self.settings['Gcode']['end_gcode'])
 
+        self.settingsUI.baud_rate_combo.clear()
+        self.settingsUI.baud_rate_combo.addItems(baud_rates)
+
+        if self.settings['Machine']['baud_rate'] is not None:
+            index = self.settingsUI.baud_rate_combo.findText(str(self.settings['Machine']['baud_rate']), Qt.MatchFixedString)
+            if index >= 0:
+                self.settingsUI.baud_rate_combo.setCurrentIndex(index)
+
+
         if self.settings['Application']['Auto_Size'] == 'True':
             self.settingsUI.autoset_radio.setChecked(1)
             self.settingsUI.xautosize_line.setText(str(self.settings['Application']['xsize']))
@@ -228,7 +325,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.settingsUI.feedrate_line.setText(str(self.settings['Gcode']['Materials'][current_material]['feedrate']))
 
         for key, value in materials.iteritems():
-            print key
             if key != current_material:
                 self.settingsUI.material_combobox.addItem(key)
 
@@ -257,6 +353,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.settings['Machine']['laser_on_cmd'] = str(self.settingsUI.laseron_line.text())
         self.settings['Machine']['laser_pwr_cmd'] = str(self.settingsUI.laserpwr_line.text())
         self.settings['Machine']['on_idle_delay'] = str(self.settingsUI.idle_line.text())
+        self.settings['Machine']['baud_rate'] = int(self.settingsUI.baud_rate_combo.currentText())
 
         self.settings['Application']['Auto_Size'] = str(self.settingsUI.autoset_radio.isChecked())
         self.settings['Application']['xsize'] = str(self.settingsUI.xautosize_line.text())
