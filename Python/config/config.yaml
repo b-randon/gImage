@@ -5,5 +5,5 @@ Gcode:
     Wood: {feedrate: '3000', high_power: '255', low_power: '0'}
   end_gcode: ''
   start_gcode: ''
-Machine: {baud_rate: 250000, bed_length: '0', bed_width: '0', focus_distance: '0',
+Machine: {baud_rate: 250000, bed_length: '200', bed_width: '200', focus_distance: '0',
   laser_off_cmd: '', laser_on_cmd: M42 P0, laser_pwr_cmd: M42 P, on_idle_delay: ''}

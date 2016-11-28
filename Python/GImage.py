@@ -25,6 +25,7 @@ class PrinterControl(QThread):
     def __init__(self, args=None):
         QThread.__init__(self)
         self.running = True
+        self.isJobRunning = False
 
         if args is not None:
             self.commands = args[0]
@@ -36,28 +37,55 @@ class PrinterControl(QThread):
     def stop(self):
         self.running = False
 
+    def jobRunning(self):
+        return self.isJobRunning
+
+    def startJob(self):
+        print "Start Job"
+        self.isJobRunning = True
+
+    def pauseJob(self):
+        print "Pause Job"
+        self.isJobRunning = False
+
+    def stopJob(self):
+        print "Stop Job"
+        self.isJobRunning = False
+
     def run(self, *args, **kwargs):
         if self.port is None:
-            print "Not Connect to Printer"
+            print "Not Connected to Printer"
 
         while(1):
-            if self.processGcode:
+            if not self.running:
+                return
+
+            if self.isJobRunning:
                 # Try to Send the Next Command
                 for i in self.commands:
                     if not self.running:
                         return
+                    if self.isJobRunning == 2:
+                        continue
+                    elif self.isJobRunning == 0:
+                        break
+
+                        print i
+
                     if (len(i) > 0) and (i != "\n"):
                         print i
-                        self.rxSignal.emit(i)
+                        self.txSignal.emit(i)
                         self.port.write(str(i))
 
                         # Poll for the Response
                         response = self.port.readline()
-                        self.txSignal.emit(response)
-
+                        if "\n" not in response:
+                            self.rxSignal("Timeout")
+                        self.rxSignal.emit(response)
             else:
                 # Send Any Pending Commands
-                if self.
+                response = self.port.readline()
+                self.rxSignal.emit(response)
 
 
 
@@ -137,10 +165,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.size_spinbox.valueChanged.connect(self.size_slider.setValue)
 
         self.submit_button.pressed.connect(self.changeSettings)
+        self.send_button.pressed.connect(self.sendCommand)
 
         # GCode Toolbar
         self.gcode_button.pressed.connect(self.generateGcode)
         self.connect_button.pressed.connect(self.connectPrinter)
+        self.job_start_button.pressed.connect(self.startJob)
+        self.job_pause_button.pressed.connect(self.pauseJob)
+        self.job_stop_button.pressed.connect(self.stopJob)
 
         # Tab Functions
         self.image_tabs.currentChanged.connect(self.onImageTabChange)
@@ -148,11 +180,38 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.show()
 
+# Button Handlers
+    def startJob(self):
+        if self.printerThread is None:
+            self.gcode_job_label.setText("Not Connected")
+        else:
+            if not self.printerThread.jobRunning():
+                self.printerThread.startJob()
+
+    def pauseJob(self):
+        if self.printerThread is not None:
+            self.gcode_job_label.setText("Not Connected")
+            self.printerThread.pauseJob()
+
+    def stopJob(self):
+        if self.printerThread is not None:
+            self.gcode_job_label.setText("Not Connected")
+            self.printerThread.stopJob()
+
+    def sendCommand(self):
+        self.TxHandler(str(self.command_edit.text()))
+        self.command_edit.clear()
+
     def RxHandler(self, message):
-        self.comm_text_edit.insertPlainText("[TX]:" + message + "\n")
+        self.comm_text_edit.setTextColor(QColor(150, 0, 0))
+        self.comm_text_edit.insertPlainText("\n[RX]:" + message)
+        self.comm_text_edit.moveCursor(QTextCursor.End)
 
     def TxHandler(self, message):
-        self.comm_text_edit.insertPlainText("RX]:" + message + "\n")
+        self.comm_text_edit.setTextColor(QColor(0, 150, 0))
+        self.comm_text_edit.insertPlainText("\n[TX]:" + message)
+        self.comm_text_edit.insertPlainText("\n[TX]:" + message)
+        self.comm_text_edit.moveCursor(QTextCursor.End)
 
     def connectPrinter(self):
         port = self.usb_combo.currentText()
@@ -170,7 +229,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 try:
                     self.serial_port = serial.Serial(
                         port=str(self.usb_combo.currentText()),
-                        baudrate=self.settings['Machine']['baud_rate'])
+                        baudrate=self.settings['Machine']['baud_rate'],
+                        timeout=5)
                 except serial.SerialException:
                     self.gcode_job_label.setText("Could Not Connect")
                     return
@@ -515,7 +575,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def generatePrinterImage(self):
 
-        self.generated_img = QImage(int(self.settings['Machine']['bed_width']) + 2, int(self.settings['Machine']['bed_width']) + 2, QImage.Format_RGB888)
+        self.generated_img = QImage(int(self.settings['Machine']['bed_width']) + 2, int(self.settings['Machine']['bed_length']) + 2, QImage.Format_RGB888)
 
         # Change the Job Status
         self.job_label.setText("Generating Printer Image")
@@ -525,17 +585,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             for j in range(0, self.generated_img.height()):
                 self.generated_img.setPixel(i, j, qRgb(255, 255, 255))
 
-        for i in range(0, int(self.settings['Machine']['bed_width']) + 1):
+        for i in range(0, self.generated_img.width()):
             self.generated_img.setPixel(i, 0, qRgb(0, 0, 0))
 
-        for i in reversed(range(0, int(self.settings['Machine']['bed_width']) + 1)):
-            self.generated_img.setPixel(i, int(self.settings['Machine']['bed_length']) + 1, qRgb(0, 0, 0))
+        for i in reversed(range(0, self.generated_img.width() - 1)):
+            self.generated_img.setPixel(i, self.generated_img.height() - 1, qRgb(0, 0, 0))
 
-        for i in range(0, int(self.settings['Machine']['bed_length']) + 1):
+        for i in range(0, self.generated_img.height()):
             self.generated_img.setPixel(0, i, qRgb(0, 0, 0))
 
-        for i in reversed(range(0, int(self.settings['Machine']['bed_length']) + 1)):
-            self.generated_img.setPixel(int(self.settings['Machine']['bed_width']) + 1, i, qRgb(0, 0, 0))
+        for i in reversed(range(0, self.generated_img.height() - 1)):
+            self.generated_img.setPixel(self.generated_img.width() - 1, i, qRgb(0, 0, 0))
 
         gcode = self.plainTextEdit.toPlainText()
         gcode_lines = gcode.split("\n")
@@ -551,9 +611,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             elif self.settings['Machine']['laser_pwr_cmd'] in i:
                 power = 255 - int(i[len(self.settings['Machine']['laser_pwr_cmd']):])
 
-            if(power > 0):
-                self.generated_img.setPixel(x + 1, y + 1, qRgb(power, power, power))
-
+            if power > 0:
+                if x < self.generated_img.width() and y < self.generated_img.height():
+                    self.generated_img.setPixel(x, y , qRgb(power, power, power))
 
         pixmap = QPixmap(self.generated_img)
         temp_scene = QGraphicsScene()

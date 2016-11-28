@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>941</width>
-    <height>771</height>
+    <height>778</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,7 +18,7 @@
     <item row="1" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="image_tab">
        <attribute name="title">
@@ -402,26 +402,19 @@
            <attribute name="title">
             <string>Comm</string>
            </attribute>
-           <layout class="QVBoxLayout" name="verticalLayout_4">
-            <item>
-             <widget class="QLabel" name="label_3">
+           <layout class="QGridLayout" name="gridLayout_10">
+            <item row="2" column="0">
+             <widget class="QLineEdit" name="command_edit"/>
+            </item>
+            <item row="2" column="1">
+             <widget class="QPushButton" name="send_button">
               <property name="text">
-               <string>Transmit</string>
+               <string>Send</string>
               </property>
              </widget>
             </item>
-            <item>
-             <widget class="QTextEdit" name="tansmit_text_edit"/>
-            </item>
-            <item>
-             <widget class="QLabel" name="label_2">
-              <property name="text">
-               <string>Receive</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QTextEdit" name="receive_text_edit"/>
+            <item row="0" column="0" colspan="2">
+             <widget class="QTextEdit" name="comm_text_edit"/>
             </item>
            </layout>
           </widget>
