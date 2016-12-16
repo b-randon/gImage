@@ -21,6 +21,8 @@ baud_rates = [
 class PrinterControl(QThread):
     rxSignal = Signal(str)
     txSignal = Signal(str)
+    progressSignal = Signal(int)
+    createImageSignal = Signal(str)
 
     def __init__(self, args=None):
         QThread.__init__(self)
@@ -52,7 +54,12 @@ class PrinterControl(QThread):
         print "Stop Job"
         self.isJobRunning = False
 
+    def calibrate(self, gcode):
+        self.commands = gcode
+        self.isJobRunning = True
+
     def run(self, *args, **kwargs):
+
         if self.port is None:
             print "Not Connected to Printer"
 
@@ -61,8 +68,13 @@ class PrinterControl(QThread):
                 return
 
             if self.isJobRunning:
+                totalSent = 0.0
                 # Try to Send the Next Command
+                self.progressSignal.emit(0)
                 for i in self.commands:
+                    totalSent += 1
+
+                    self.progressSignal.emit(int(float(totalSent/len(self.commands)) * 100))
                     if not self.running:
                         return
                     if self.isJobRunning == 2:
@@ -70,24 +82,38 @@ class PrinterControl(QThread):
                     elif self.isJobRunning == 0:
                         break
 
-                        print i
-
                     if (len(i) > 0) and (i != "\n"):
-                        print i
-                        self.txSignal.emit(i)
-                        self.port.write(str(i))
+                        self.txSignal.emit(i + "\n")
+                        self.port.write(str(i) + "\n")
+
+                        self.createImageSignal.emit(str(i))
 
                         # Poll for the Response
-                        response = self.port.readline()
-                        if "\n" not in response:
-                            self.rxSignal("Timeout")
+                        response = ""
+                        i = 0
+                        while True:
+                            response = self.port.readline()
+                            i += 1
+                            if "\n" not in response:
+                                if i > 5:
+                                    self.rxSignal.emit("Timeout\n")
+                                    break
+                            elif "busy" in response:
+                                print "Busy"
+                                #Wait for a Bit
+                                if i > 5:
+                                    self.rxSignal.emit("Processing Timeout\n")
+                                    break
+                            else:
+                                break
+
                         self.rxSignal.emit(response)
+                self.isJobRunning = False
             else:
                 # Send Any Pending Commands
                 response = self.port.readline()
-                self.rxSignal.emit(response)
-
-
+                if response:
+                    self.rxSignal.emit(response)
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
@@ -99,10 +125,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.grayscale_img = QImage()
         self.generated_img = QImage()
         self.saved_grayscale_img = QImage()
+        self.generated_img_2 = QImage()
+
         self.scene = QGraphicsScene()
         self.settingsDialog = QDialog(self)
         self.settingsUI = Ui_Form()
         self.settingsUI.setupUi(self.settingsDialog)
+
+        #Settings Menu Setup
+        self.settingsUI.calibrate_button.setDisabled(True)
+
         self.serial_port = None
         self.printerThread = None
 
@@ -122,6 +154,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.gray_scene = QGraphicsScene()
         self.generated_scene = QGraphicsScene()
         self.isNewFile = 0
+
+        self.temp_x = 0
+        self.temp_y = 0
+        self.temp_power = 0
 
         materials = self.settings['Gcode']['Materials']
         current_material = self.settings['Gcode']['Current']
@@ -199,19 +235,47 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.printerThread.stopJob()
 
     def sendCommand(self):
-        self.TxHandler(str(self.command_edit.text()))
+        self.TxHandler(str(self.command_edit.text()) + "\n")
+        self.serial_port.write(str(self.command_edit.text()) + "\n")
         self.command_edit.clear()
 
     def RxHandler(self, message):
         self.comm_text_edit.setTextColor(QColor(150, 0, 0))
-        self.comm_text_edit.insertPlainText("\n[RX]:" + message)
+        self.comm_text_edit.insertPlainText("[RX]:" + message)
         self.comm_text_edit.moveCursor(QTextCursor.End)
 
     def TxHandler(self, message):
         self.comm_text_edit.setTextColor(QColor(0, 150, 0))
         self.comm_text_edit.insertPlainText("\n[TX]:" + message)
-        self.comm_text_edit.insertPlainText("\n[TX]:" + message)
         self.comm_text_edit.moveCursor(QTextCursor.End)
+
+    def updateGcodeImage(self, command):
+        if "G1 X" in command:
+            self.temp_x = float(command[4:])
+        elif "G1 Y" in command:
+            self.temp_y = float(command[4:])
+        elif self.settings['Machine']['laser_pwr_cmd'] in command:
+            self.temp_power = 255 - int(command[len(self.settings['Machine']['laser_pwr_cmd']):])
+
+        if self.temp_power > 0:
+            if self.temp_x < self.generated_img_2.width() and self.temp_y < self.generated_img_2.height():
+                self.generated_img_2.setPixel(self.temp_x, self.temp_y, qRgb(self.temp_power, self.temp_power, self.temp_power))
+
+        print self.temp_power
+
+        pixmap = QPixmap(self.generated_img_2)
+        temp_scene = QGraphicsScene()
+        temp_scene.addPixmap(pixmap)
+        temp_scene.setSceneRect(0, 0, self.generated_img_2.width(), self.generated_img_2.height())
+        self.generated_image_2.setScene(temp_scene)
+        self.generated_image_2.show()
+
+    def disconnectPrinter(self):
+        if str(self.connect_button.text()) == "Connected":
+            if self.serial_port is not None:
+                self.serial_port.close()
+            self.connect_button.setText("Connected")
+            self.connect_button.pressed.connect(self.connectPrinter)
 
     def connectPrinter(self):
         port = self.usb_combo.currentText()
@@ -237,6 +301,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             self.gcode_job_label.setText("Connected")
             self.connect_button.setText("Disconnect")
+            self.connect_button.pressed.connect(self.disconnectPrinter)
 
             # Grab the Current G-Code Commands
             gcode = self.plainTextEdit.toPlainText()
@@ -245,6 +310,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Connect Thread Signals
             self.printerThread.rxSignal.connect(self.RxHandler)
             self.printerThread.txSignal.connect(self.TxHandler)
+            self.printerThread.progressSignal.connect(self.progressBar.setValue)
+            self.printerThread.createImageSignal.connect(self.updateGcodeImage)
+
+            self.settingsUI.calibrate_button.setDisabled(False)
 
             self.printerThread.start()
 
@@ -397,7 +466,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.settingsUI.minpwr_line.textChanged.connect(self.setMinPower)
         self.settingsUI.maxpwr_line.textChanged.connect(self.setMinPower)
         self.settingsUI.feedrate_line.textChanged.connect(self.setMinPower)
-
+        self.settingsUI.calibrate_button.pressed.connect(self.startCalibration)
         self.settingsDialog.show()
 
     def acceptSettings(self):
@@ -434,15 +503,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def showOpenDialog(self):
         if self.tabWidget.currentIndex() == 0:
             file_name,_ = QFileDialog.getOpenFileName(self, 'Open file',
-                                          '/', "Image files (*.jpg *.jpeg *.gif *.bmp);;GCode Files (*.gcode *.gco *.txt")
+                                          '/', "Image files (*.jpg *.jpeg *.gif *.bmp *.png);;GCode Files (*.gcode *.gco *.txt")
         else:
             file_name,_ = QFileDialog.getOpenFileName(self, 'Open file',
 
-                                          '/', "GCode Files (*.gcode *.gco *.txt);;Image files (*.jpg *.jpeg *.gif *.bmp)")
+                                          '/', "GCode Files (*.gcode *.gco *.txt);;Image files (*.jpg *.jpeg *.gif *.bmp *.png)")
         print file_name
         if file_name:
             file_ext = os.path.splitext(file_name)[1]
-            if file_ext in (".jpg", ".gif", ".bmp"):
+            if file_ext in (".jpg", ".gif", ".bmp", ".png"):
                 # Open the Image File
                 self.original_img.load(file_name)
 
@@ -573,9 +642,38 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.job_label.setText("Finished")
         self.job_progressbar.setValue(100)
 
+    def startCalibration(self):
+
+        # Generate the Gcode Commands
+        tempGcode = []
+        tempGcode.append("G28")
+        tempGcode.append("G1 F" + self.settings['Gcode']['Materials'][self.material_combobox.currentText()]['feedrate'] + "\n")
+
+        current_material = self.settings['Gcode']['Current']
+
+        max_pwr = int(self.settings['Gcode']['Materials'][current_material]['high_power'])
+        max_pwr - max_pwr * 0.8
+
+        for i in range(0, 21):
+            tempGcode.append("G1 Y%02.2f" % (i * 2))
+            tempGcode.append("M400")
+            tempGcode.append("M42 P4 S180")
+            tempGcode.append("G1 X50.0")
+            tempGcode.append("M400")
+            tempGcode.append("M42 P4 S0")
+            tempGcode.append("G1 X00.0")
+            tempGcode.append("G1 Z%02.2f" % ((i+1) * 0.5))
+
+        tempGcode.append("G28")
+        tempGcode.append("M42 P4 S0")
+
+        # Restart the Printer Thread
+        self.printerThread.calibrate(tempGcode)
+
     def generatePrinterImage(self):
 
         self.generated_img = QImage(int(self.settings['Machine']['bed_width']) + 2, int(self.settings['Machine']['bed_length']) + 2, QImage.Format_RGB888)
+        self.generated_img_2 = QImage(int(self.settings['Machine']['bed_width']) + 2, int(self.settings['Machine']['bed_length']) + 2, QImage.Format_RGB888)
 
         # Change the Job Status
         self.job_label.setText("Generating Printer Image")
@@ -584,18 +682,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for i in range(0, self.generated_img.width()):
             for j in range(0, self.generated_img.height()):
                 self.generated_img.setPixel(i, j, qRgb(255, 255, 255))
+                self.generated_img_2.setPixel(i, j, qRgb(255, 255, 255))
 
         for i in range(0, self.generated_img.width()):
             self.generated_img.setPixel(i, 0, qRgb(0, 0, 0))
+            self.generated_img_2.setPixel(i, 0, qRgb(0, 0, 0))
 
         for i in reversed(range(0, self.generated_img.width() - 1)):
             self.generated_img.setPixel(i, self.generated_img.height() - 1, qRgb(0, 0, 0))
+            self.generated_img_2.setPixel(i, self.generated_img.height() - 1, qRgb(0, 0, 0))
 
         for i in range(0, self.generated_img.height()):
             self.generated_img.setPixel(0, i, qRgb(0, 0, 0))
+            self.generated_img_2.setPixel(0, i, qRgb(0, 0, 0))
 
         for i in reversed(range(0, self.generated_img.height() - 1)):
             self.generated_img.setPixel(self.generated_img.width() - 1, i, qRgb(0, 0, 0))
+            self.generated_img_2.setPixel(self.generated_img.width() - 1, i, qRgb(0, 0, 0))
 
         gcode = self.plainTextEdit.toPlainText()
         gcode_lines = gcode.split("\n")
@@ -623,6 +726,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.generated_image.fitInView(temp_scene.sceneRect(), Qt.KeepAspectRatio)
         self.generated_image.show()
 
+        pixmap = QPixmap(self.generated_img_2)
+        temp_scene = QGraphicsScene()
+        temp_scene.addPixmap(pixmap)
+        temp_scene.setSceneRect(0, 0, self.generated_img_2.width(), self.generated_img_2.height())
+        self.generated_image_2.setScene(temp_scene)
+        self.generated_image_2.fitInView(temp_scene.sceneRect(), Qt.KeepAspectRatio)
+        self.generated_image_2.show()
+
         self.job_label.setText("Finished")
         self.job_progressbar.setValue(100)
 
@@ -647,6 +758,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.isNewFile = False
 
         gcode = ''
+        self.plainTextEdit.clear()
 
         # Change the Job Status
         self.job_label.setText("Generating Gcode")
@@ -655,13 +767,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #g-code Header
         gcode += self.settings['Gcode']['start_gcode'] + "\n\n"
 
+        #Set the Focal Distance for the Z Axis
+        gcode += "G1 Z%02.01i" % float(self.settings['Machine']['focus_distance']) + "\n"
+
        #Feedrate
         if not self.settings['Gcode']['Current']:
             print "No Material Selected"
             return
 
         gcode += self.settings['Machine']['laser_on_cmd'] + "\n"
-        gcode += "G1 " + self.settings['Gcode']['Materials'][self.material_combobox.currentText()]['feedrate'] + "\n"
+        gcode += "G1 F" + self.settings['Gcode']['Materials'][self.material_combobox.currentText()]['feedrate'] + "\n"
 
         old_color = -1
         yCoord = 0
@@ -673,20 +788,36 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         min_pwr = int(self.settings['Gcode']['Materials'][current_material]['low_power'])
         max_pwr = int(self.settings['Gcode']['Materials'][current_material]['high_power'])
 
+        i = 0
+        j = 0
+
+        #Start in the Negative Direction
+        #The Image is Mirrored
+        direction = -1
+        j = self.original_img.width() - 1
+
         #Loop Through All of the Pixels
-        for i in range(0, self.original_img.height()):
-            #Write to the Temp File to Save Memory
-            yCoord += resolution
+        while i < (self.original_img.height() - 1):
             gcode += "G1 Y" + str(yCoord) + "\n"
 
             # Update the Progress Bar
             if i > 0:
                 self.job_progressbar.setValue(int((float(i) / self.original_img.width()) * 100))
 
-            xCoord = 0
+            while True:
+                if direction > 0:
+                    if j > (self.grayscale_img.width() - 2):
+                        #Turn the Laser Off When Moving in the Y Direction
+                        gcode += "M400\n"
+                        gcode += self.settings['Machine']['laser_pwr_cmd'] + "0" + "\n"
+                        break
+                else:
+                    if j < 0:
+                        #Turn the Laser Off When Moving in the Y Direction
+                        gcode += "M400\n"
+                        gcode += self.settings['Machine']['laser_pwr_cmd'] + "0" + "\n"
+                        break
 
-            for j in range(0, self.grayscale_img.width()):
-                xCoord += resolution
                 gcode += "G1 X" + str(xCoord) + "\n"
                 color = QColor(self.grayscale_img.pixel(j, i))
 
@@ -698,7 +829,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
                 if old_color != red:
                     old_color = red
+
+                    #Wait for the Movement Commands to Finish First Before Changing the Power
+                    gcode += "M400\n"
                     gcode +=  self.settings['Machine']['laser_pwr_cmd'] + str(red) + "\n"
+
+                j += direction
+                xCoord -= (resolution * direction)
+
+            #Switch Directions
+            direction *= -1
+            i += 1
+            yCoord += resolution
 
         gcode += self.settings['Machine']['laser_off_cmd'] + "\n"
 

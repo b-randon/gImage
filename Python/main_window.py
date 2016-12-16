@@ -220,7 +220,7 @@ class Ui_MainWindow(object):
         self.job_gen_img_tab.setObjectName("job_gen_img_tab")
         self.gridLayout_9 = QtGui.QGridLayout(self.job_gen_img_tab)
         self.gridLayout_9.setObjectName("gridLayout_9")
-        self.generated_image_2 = QtGui.QGraphicsView(self.job_gen_img_tab)
+        self.generated_image_2 = MyGraphicsView()
         self.generated_image_2.setObjectName("generated_image_2")
         self.gridLayout_9.addWidget(self.generated_image_2, 0, 0, 1, 1)
         self.gcode_tabs.addTab(self.job_gen_img_tab, "")

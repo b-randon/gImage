@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'C:\Users\B\Desktop\git\gImage\UI\settings_window.ui'
 #
-# Created: Mon Nov 21 22:11:33 2016
+# Created: Fri Dec 02 22:57:01 2016
 #      by: pyside-uic 0.2.15 running on PySide 1.2.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -84,7 +84,7 @@ class Ui_Form(object):
         self.label_5.setObjectName("label_5")
         self.gridLayout_2.addWidget(self.label_5, 2, 2, 1, 1)
         self.verticalLayoutWidget = QtGui.QWidget(self.tab)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(240, 20, 101, 41))
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(240, 20, 101, 89))
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
         self.verticalLayout_4 = QtGui.QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
@@ -95,6 +95,11 @@ class Ui_Form(object):
         self.baud_rate_combo = QtGui.QComboBox(self.verticalLayoutWidget)
         self.baud_rate_combo.setObjectName("baud_rate_combo")
         self.verticalLayout_4.addWidget(self.baud_rate_combo)
+        spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        self.verticalLayout_4.addItem(spacerItem)
+        self.calibrate_button = QtGui.QPushButton(self.verticalLayoutWidget)
+        self.calibrate_button.setObjectName("calibrate_button")
+        self.verticalLayout_4.addWidget(self.calibrate_button)
         self.tabWidget.addTab(self.tab, "")
         self.tab_2 = QtGui.QWidget()
         self.tab_2.setObjectName("tab_2")
@@ -218,6 +223,7 @@ class Ui_Form(object):
         self.label_11.setText(QtGui.QApplication.translate("Form", "s", None, QtGui.QApplication.UnicodeUTF8))
         self.label_5.setText(QtGui.QApplication.translate("Form", "mm", None, QtGui.QApplication.UnicodeUTF8))
         self.label_33.setText(QtGui.QApplication.translate("Form", "Baud Rate", None, QtGui.QApplication.UnicodeUTF8))
+        self.calibrate_button.setText(QtGui.QApplication.translate("Form", "Calibrate", None, QtGui.QApplication.UnicodeUTF8))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QtGui.QApplication.translate("Form", "Machine", None, QtGui.QApplication.UnicodeUTF8))
         self.label_16.setText(QtGui.QApplication.translate("Form", "Starting Gcode", None, QtGui.QApplication.UnicodeUTF8))
         self.label_17.setText(QtGui.QApplication.translate("Form", "Ending Gcode", None, QtGui.QApplication.UnicodeUTF8))
