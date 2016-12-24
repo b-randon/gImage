@@ -672,51 +672,58 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def generatePrinterImage(self):
 
-        self.generated_img = QImage(int(self.settings['Machine']['bed_width']) + 2, int(self.settings['Machine']['bed_length']) + 2, QImage.Format_RGB888)
-        self.generated_img_2 = QImage(int(self.settings['Machine']['bed_width']) + 2, int(self.settings['Machine']['bed_length']) + 2, QImage.Format_RGB888)
+        if not self.resolution_edit.text():
+            return
+
+        resolution = float(self.resolution_edit.text())
+
+        self.generated_img = QImage(((int(self.settings['Machine']['bed_width']) + 2) * (1/resolution)), ((int(self.settings['Machine']['bed_length']) + 2) * (1/resolution)), QImage.Format_RGB888)
 
         # Change the Job Status
         self.job_label.setText("Generating Printer Image")
         self.job_label.repaint()
 
-        for i in range(0, self.generated_img.width()):
-            for j in range(0, self.generated_img.height()):
-                self.generated_img.setPixel(i, j, qRgb(255, 255, 255))
-                self.generated_img_2.setPixel(i, j, qRgb(255, 255, 255))
+        self.generated_img.fill(qRgb(255, 255, 255))
 
         for i in range(0, self.generated_img.width()):
-            self.generated_img.setPixel(i, 0, qRgb(0, 0, 0))
-            self.generated_img_2.setPixel(i, 0, qRgb(0, 0, 0))
+            for j in range(0, int(1/resolution)):
+                self.generated_img.setPixel(i, j, qRgb(0, 0, 0))
 
         for i in reversed(range(0, self.generated_img.width() - 1)):
-            self.generated_img.setPixel(i, self.generated_img.height() - 1, qRgb(0, 0, 0))
-            self.generated_img_2.setPixel(i, self.generated_img.height() - 1, qRgb(0, 0, 0))
+            for j in range(0, int(1 / resolution)):
+                self.generated_img.setPixel(i, (self.generated_img.height() - j) - 1, qRgb(0, 0, 0))
 
         for i in range(0, self.generated_img.height()):
-            self.generated_img.setPixel(0, i, qRgb(0, 0, 0))
-            self.generated_img_2.setPixel(0, i, qRgb(0, 0, 0))
+            for j in range(0, int(1 / resolution)):
+                self.generated_img.setPixel(j, i, qRgb(0, 0, 0))
 
         for i in reversed(range(0, self.generated_img.height() - 1)):
-            self.generated_img.setPixel(self.generated_img.width() - 1, i, qRgb(0, 0, 0))
-            self.generated_img_2.setPixel(self.generated_img.width() - 1, i, qRgb(0, 0, 0))
+            for j in range(0, int(1 / resolution)):
+                self.generated_img.setPixel((self.generated_img.width() - j) - 1, i, qRgb(0, 0, 0))
 
         gcode = self.plainTextEdit.toPlainText()
         gcode_lines = gcode.split("\n")
 
         x = 0
         y = 0
+        counter = 0
         power = -1
         for i in gcode_lines:
+            counter += 1
+            # Update the Progress Bar
+            if counter > 0:
+                self.job_progressbar.setValue((counter / len(gcode_lines)) * 100)
+
             if "G1 X" in i:
-                x = float(i[4:])
+                x = float(i[4:]) * (1/resolution)
             elif "G1 Y" in i:
-                y = float(i[4:])
+                y = float(i[4:]) * (1/resolution)
             elif self.settings['Machine']['laser_pwr_cmd'] in i:
                 power = 255 - int(i[len(self.settings['Machine']['laser_pwr_cmd']):])
 
             if power > 0:
                 if x < self.generated_img.width() and y < self.generated_img.height():
-                    self.generated_img.setPixel(x, y , qRgb(power, power, power))
+                    self.generated_img.setPixel(x + (1/resolution), ((self.generated_img.height() - (1/resolution)) - y) , qRgb(power, power, power))
 
         pixmap = QPixmap(self.generated_img)
         temp_scene = QGraphicsScene()
@@ -751,8 +758,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not self.material_combobox.currentText():
             return
 
-
-
         if not self.grayscale_img:
             self.convertToGrayScale()
             self.isNewFile = False
@@ -779,8 +784,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         gcode += "G1 F" + self.settings['Gcode']['Materials'][self.material_combobox.currentText()]['feedrate'] + "\n"
 
         old_color = -1
-        yCoord = 0
-        xCoord = 0
+        yCoord = 0.0
+        xCoord = 0.0
 
         current_material = self.settings['Gcode']['Current']
 
@@ -789,37 +794,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         max_pwr = int(self.settings['Gcode']['Materials'][current_material]['high_power'])
 
         i = 0
-        j = 0
-
-        #Start in the Negative Direction
-        #The Image is Mirrored
-        direction = -1
-        j = self.original_img.width() - 1
+        direction = 1
 
         #Loop Through All of the Pixels
-        while i < (self.original_img.height() - 1):
+        for i in range(0, self.original_img.height()):
             gcode += "G1 Y" + str(yCoord) + "\n"
 
             # Update the Progress Bar
             if i > 0:
                 self.job_progressbar.setValue(int((float(i) / self.original_img.width()) * 100))
 
-            while True:
-                if direction > 0:
-                    if j > (self.grayscale_img.width() - 2):
-                        #Turn the Laser Off When Moving in the Y Direction
-                        gcode += "M400\n"
-                        gcode += self.settings['Machine']['laser_pwr_cmd'] + "0" + "\n"
-                        break
-                else:
-                    if j < 0:
-                        #Turn the Laser Off When Moving in the Y Direction
-                        gcode += "M400\n"
-                        gcode += self.settings['Machine']['laser_pwr_cmd'] + "0" + "\n"
-                        break
+            for j in range(0, self.original_img.width()):
 
                 gcode += "G1 X" + str(xCoord) + "\n"
-                color = QColor(self.grayscale_img.pixel(j, i))
+
+                if direction > 0:
+                    color = QColor(self.grayscale_img.pixel(((self.original_img.width() - 1) - j),
+                                                            (self.original_img.height() - 1) - i))
+                else:
+                    color = QColor(self.grayscale_img.pixel(j,
+                                                            (self.original_img.height() - 1) - i))
 
                 red = 255 - color.red()
                 if red < min_pwr:
@@ -834,13 +828,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     gcode += "M400\n"
                     gcode +=  self.settings['Machine']['laser_pwr_cmd'] + str(red) + "\n"
 
-                j += direction
-                xCoord -= (resolution * direction)
+                if direction > 0:
+                    xCoord += resolution
+                else:
+                    xCoord -= resolution
 
-            #Switch Directions
-            direction *= -1
-            i += 1
+                xCoord = round(xCoord, 3)
+
+            if direction > 0:
+                xCoord -= resolution
+            else:
+                xCoord += resolution
+
+            direction = direction * -1
             yCoord += resolution
+            yCoord = round(yCoord, 3)
+
+            #Turn Off the Laser When Moving in the Y Direction
+            gcode += "M400\n"
+            gcode += self.settings['Machine']['laser_pwr_cmd'] + "0" + "\n"
 
         gcode += self.settings['Machine']['laser_off_cmd'] + "\n"
 
