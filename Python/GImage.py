@@ -712,7 +712,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             counter += 1
             # Update the Progress Bar
             if counter > 0:
-                self.job_progressbar.setValue((counter / len(gcode_lines)) * 100)
+                self.job_progressbar.setValue((float(counter) / len(gcode_lines)) * 100)
 
             if "G1 X" in i:
                 x = float(i[4:]) * (1/resolution)
@@ -743,6 +743,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.job_label.setText("Finished")
         self.job_progressbar.setValue(100)
+
+    def scaleValue(self, value, min_val, max_val):
+        range = (255 - 0)
+
+        range = (max_val - min_val)
+        return(((value) * range) / 255) + min_val
 
     def generateGcode(self):
 
@@ -809,17 +815,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 gcode += "G1 X" + str(xCoord) + "\n"
 
                 if direction > 0:
-                    color = QColor(self.grayscale_img.pixel(((self.original_img.width() - 1) - j),
-                                                            (self.original_img.height() - 1) - i))
-                else:
                     color = QColor(self.grayscale_img.pixel(j,
                                                             (self.original_img.height() - 1) - i))
+                else:
+                    color = QColor(self.grayscale_img.pixel(((self.original_img.width() - 1) - j),
+                                                            (self.original_img.height() - 1) - i))
 
-                red = 255 - color.red()
-                if red < min_pwr:
-                    red = min_pwr
-                if red > max_pwr:
-                    red = max_pwr
+                tmp_color = 255 - color.red()
+                red = self.scaleValue(tmp_color, min_pwr, max_pwr)
 
                 if old_color != red:
                     old_color = red
